@@ -16,6 +16,9 @@ const (
 )
 
 func main() {
+	// Load game assets
+	LoadAssets()
+
 	ebiten.SetWindowSize(screenWidth*2, screenHeight*2)
 	ebiten.SetWindowTitle("Flappy Bird")
 
