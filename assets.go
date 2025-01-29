@@ -1,3 +1,4 @@
+// Package main handles the game logic
 package main
 
 import (
