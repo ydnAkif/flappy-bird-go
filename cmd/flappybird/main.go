@@ -2,10 +2,11 @@ package main
 
 import (
 	"log"
-	"math/rand"
-	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
+
+	"flappy-bird-go/internal/config"
+	"flappy-bird-go/internal/game"
 )
 
 // Game constants
@@ -23,16 +24,15 @@ func init() {
 }
 
 func main() {
-	// Load game assets
-	LoadAssets()
-	
-	// Initialize audio
-	InitAudio()
+	ebiten.SetWindowSize(config.ScreenWidth, config.ScreenHeight)
+	ebiten.SetWindowTitle(config.GameTitle)
 
-	ebiten.SetWindowSize(screenWidth*2, screenHeight*2)
-	ebiten.SetWindowTitle("Flappy Bird")
+	g, err := game.NewGame()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	if err := ebiten.RunGame(NewGame()); err != nil {
+	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
 	}
 }

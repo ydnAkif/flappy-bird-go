@@ -1,5 +1,5 @@
-// Package main handles the game logic
-package main
+// Package game handles the game logic
+package game
 
 import (
 	"bytes"
