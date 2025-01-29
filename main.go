@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"math"
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -21,6 +22,11 @@ const (
 	gameTitle    = "Flappy Bird"
 	sampleRate   = 44100
 	audioSampleRate = 44100
+
+	// Oyun durumları için yeni sabitler
+	gameStateTitle int = iota
+	gameStatePlaying
+	gameStateGameOver
 )
 
 // Global audio context
@@ -44,6 +50,17 @@ type Game struct {
 	jumpSound    *audio.Player
 	hitSound     *audio.Player
 	scoreSound   *audio.Player
+
+	// Yeni özellikler
+	gameState    int
+	highScore    int
+	birdFrame    int     // Animasyon için frame sayacı
+	birdAngle    float64 // Kuşun rotasyonu
+	scrollX      float64 // Parallax scrolling için
+	
+	// Sprite'lar için yeni alanlar
+	birdSprites  []*ebiten.Image
+	bgLayers     []*ebiten.Image
 }
 
 type Bird struct {
@@ -74,6 +91,7 @@ func NewGame() *Game {
 		pipes:        make([]Pipe, 0),
 		difficulty:   1.0,
 		audioContext: globalAudioContext,
+		gameState:    gameStateTitle,
 	}
 
 	// Geçici görüntüler oluştur - embed yerine doğrudan görüntü oluştur
@@ -107,80 +125,105 @@ func (g *Game) addPipe() {
 }
 
 func (g *Game) Update() error {
-	if g.gameOver {
+	switch g.gameState {
+	case gameStateTitle:
+		if ebiten.IsKeyPressed(ebiten.KeySpace) {
+			g.gameState = gameStatePlaying
+		}
+	case gameStatePlaying:
+		if g.gameOver {
+			if ebiten.IsKeyPressed(ebiten.KeySpace) {
+				newGame := NewGame()
+				// Ses bağlamını kopyala
+				newGame.audioContext = g.audioContext
+				*g = *newGame
+			}
+			return nil
+		}
+
+		// Increase difficulty based on score
+		g.difficulty = 1.0 + float64(g.score)/20.0
+
+		// Bird control with updated velocity
+		if ebiten.IsKeyPressed(ebiten.KeySpace) {
+			if !g.spaceJust {
+				g.bird.vy = -8 * g.difficulty
+				g.spaceJust = true
+				// Ses çalma kısmını kontrol et
+				if g.jumpSound != nil {
+					g.jumpSound.Rewind()
+					g.jumpSound.Play()
+				}
+			}
+		} else {
+			g.spaceJust = false
+		}
+
+		g.bird.vy += g.bird.gravity
+		g.bird.y += g.bird.vy
+
+		// Updated pipe speed based on difficulty
+		for i := range g.pipes {
+			g.pipes[i].x -= 2 * g.difficulty
+
+			// Çarpışma kontrolü
+			birdRect := []float64{g.bird.x, g.bird.y, birdSize, birdSize}
+			topPipeRect := []float64{g.pipes[i].x, 0, pipeWidth, g.pipes[i].topH}
+			bottomPipeRect := []float64{g.pipes[i].x, screenHeight - g.pipes[i].bottomH, pipeWidth, g.pipes[i].bottomH}
+
+			if checkCollision(birdRect, topPipeRect) || checkCollision(birdRect, bottomPipeRect) {
+				g.gameOver = true
+				if g.hitSound != nil {
+					g.hitSound.Rewind()
+					g.hitSound.Play()
+				}
+			}
+
+			// Skor kontrolü
+			if !g.pipes[i].passed && g.pipes[i].x+pipeWidth < g.bird.x {
+				g.score++
+				g.pipes[i].passed = true
+				if g.scoreSound != nil {
+					g.scoreSound.Rewind()
+					g.scoreSound.Play()
+				}
+			}
+		}
+
+		// Ekrandan çıkan boruları sil
+		if len(g.pipes) > 0 && g.pipes[0].x < -pipeWidth {
+			g.pipes = g.pipes[1:]
+		}
+
+		// Yeni boru ekle
+		if len(g.pipes) == 0 || g.pipes[len(g.pipes)-1].x < screenWidth-200 {
+			g.addPipe()
+		}
+
+		// Zemin ve tavan çarpışma kontrolü
+		if g.bird.y < 0 || g.bird.y > screenHeight-birdSize {
+			g.gameOver = true
+		}
+
+		// Kuş animasyonu
+		g.birdFrame = (g.birdFrame + 1) % 3
+		g.birdAngle = g.bird.vy * 0.1
+
+		// Parallax scrolling
+		g.scrollX -= 2 * g.difficulty
+
+	case gameStateGameOver:
+		// Yüksek skor kontrolü
+		if g.score > g.highScore {
+			g.highScore = g.score
+		}
 		if ebiten.IsKeyPressed(ebiten.KeySpace) {
 			newGame := NewGame()
 			// Ses bağlamını kopyala
 			newGame.audioContext = g.audioContext
 			*g = *newGame
 		}
-		return nil
 	}
-
-	// Increase difficulty based on score
-	g.difficulty = 1.0 + float64(g.score)/20.0
-
-	// Bird control with updated velocity
-	if ebiten.IsKeyPressed(ebiten.KeySpace) {
-		if !g.spaceJust {
-			g.bird.vy = -8 * g.difficulty
-			g.spaceJust = true
-			// Ses çalma kısmını kontrol et
-			if g.jumpSound != nil {
-				g.jumpSound.Rewind()
-				g.jumpSound.Play()
-			}
-		}
-	} else {
-		g.spaceJust = false
-	}
-
-	g.bird.vy += g.bird.gravity
-	g.bird.y += g.bird.vy
-
-	// Updated pipe speed based on difficulty
-	for i := range g.pipes {
-		g.pipes[i].x -= 2 * g.difficulty
-
-		// Çarpışma kontrolü
-		birdRect := []float64{g.bird.x, g.bird.y, birdSize, birdSize}
-		topPipeRect := []float64{g.pipes[i].x, 0, pipeWidth, g.pipes[i].topH}
-		bottomPipeRect := []float64{g.pipes[i].x, screenHeight - g.pipes[i].bottomH, pipeWidth, g.pipes[i].bottomH}
-
-		if checkCollision(birdRect, topPipeRect) || checkCollision(birdRect, bottomPipeRect) {
-			g.gameOver = true
-			if g.hitSound != nil {
-				g.hitSound.Rewind()
-				g.hitSound.Play()
-			}
-		}
-
-		// Skor kontrolü
-		if !g.pipes[i].passed && g.pipes[i].x+pipeWidth < g.bird.x {
-			g.score++
-			g.pipes[i].passed = true
-			if g.scoreSound != nil {
-				g.scoreSound.Rewind()
-				g.scoreSound.Play()
-			}
-		}
-	}
-
-	// Ekrandan çıkan boruları sil
-	if len(g.pipes) > 0 && g.pipes[0].x < -pipeWidth {
-		g.pipes = g.pipes[1:]
-	}
-
-	// Yeni boru ekle
-	if len(g.pipes) == 0 || g.pipes[len(g.pipes)-1].x < screenWidth-200 {
-		g.addPipe()
-	}
-
-	// Zemin ve tavan çarpışma kontrolü
-	if g.bird.y < 0 || g.bird.y > screenHeight-birdSize {
-		g.gameOver = true
-	}
-
 	return nil
 }
 
@@ -192,14 +235,24 @@ func checkCollision(rect1, rect2 []float64) bool {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Arkaplanı çiz
+	// Parallax arka plan çizimi
 	op := &ebiten.DrawImageOptions{}
-	screen.DrawImage(g.bgImg, op)
+	for i, layer := range g.bgLayers {
+		speed := float64(i+1) * 0.5
+		x := math.Mod(g.scrollX*speed, float64(screenWidth))
+		op.GeoM.Reset()
+		op.GeoM.Translate(x, 0)
+		screen.DrawImage(layer, op)
+		op.GeoM.Translate(float64(screenWidth), 0)
+		screen.DrawImage(layer, op)
+	}
 
-	// Kuşu çiz
+	// Animasyonlu kuş çizimi
 	op = &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(g.bird.x, g.bird.y)
-	screen.DrawImage(g.birdImg, op)
+	op.GeoM.Translate(-float64(birdSize)/2, -float64(birdSize)/2)
+	op.GeoM.Rotate(g.birdAngle)
+	op.GeoM.Translate(g.bird.x+float64(birdSize)/2, g.bird.y+float64(birdSize)/2)
+	screen.DrawImage(g.birdSprites[g.birdFrame], op)
 
 	// Boruları çiz
 	for _, pipe := range g.pipes {
@@ -215,13 +268,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		screen.DrawImage(g.pipeImg, op)
 	}
 
-	// Improved score display
-	scoreText := fmt.Sprintf("Score: %d", g.score)
-	ebitenutil.DebugPrint(screen, scoreText)
-
-	if g.gameOver {
-		gameOverText := fmt.Sprintf("\n\nGame Over!\nFinal Score: %d\nPress SPACE to restart", g.score)
-		ebitenutil.DebugPrint(screen, gameOverText)
+	// Duruma göre UI çizimi
+	switch g.gameState {
+	case gameStateTitle:
+		ebitenutil.DebugPrint(screen, "Press SPACE to start\nHigh Score: "+fmt.Sprint(g.highScore))
+	case gameStatePlaying:
+		ebitenutil.DebugPrint(screen, "Score: "+fmt.Sprint(g.score))
+	case gameStateGameOver:
+		ebitenutil.DebugPrint(screen, fmt.Sprintf("\n\nGame Over!\nScore: %d\nHigh Score: %d\nPress SPACE to restart", g.score, g.highScore))
 	}
 }
 
