@@ -1,11 +1,11 @@
 package game
 
 import (
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	
+	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/imdraw"
+	"github.com/faiface/pixel/pixelgl"
+
 	"github.com/ydnAkif/flappy-bird-go/internal/config"
-	"github.com/ydnAkif/flappy-bird-go/internal/game/sprite"
 )
 
 // Bird states
@@ -17,85 +17,79 @@ const (
 
 // Bird represents the player character
 type Bird struct {
-	x, y    float64
-	vy      float64
-	state   int
-	animations map[int]*sprite.Animation
-	currentAnim *sprite.Animation
+	pos    pixel.Vec
+	vel    pixel.Vec
+	state  int
+	imd    *imdraw.IMDraw
 }
 
 // NewBird creates a new bird instance
 func NewBird() (*Bird, error) {
-	// Load bird sprite sheet
-	birdImg, _, err := ebitenutil.NewImageFromFile("internal/assets/sprites/bird.png")
-	if err != nil {
-		return nil, err
-	}
-
 	bird := &Bird{
-		x:       50,
-		y:       config.ScreenHeight / 2,
-		state:   BirdStateIdle,
-		animations: make(map[int]*sprite.Animation),
+		pos:   pixel.V(50, float64(config.ScreenHeight)/2),
+		vel:   pixel.V(0, 0),
+		state: BirdStateIdle,
+		imd:   imdraw.New(nil),
 	}
-
-	// Create animations for different states
-	bird.animations[BirdStateIdle] = sprite.NewAnimation(birdImg, 32, 32, 0.1, true)    // Idle animation
-	bird.animations[BirdStateFlying] = sprite.NewAnimation(birdImg, 32, 32, 0.08, true) // Flying animation
-	bird.animations[BirdStateFalling] = sprite.NewAnimation(birdImg, 32, 32, 0.1, false) // Falling animation
-	
-	bird.currentAnim = bird.animations[BirdStateIdle]
 	return bird, nil
 }
 
 // Update updates the bird's position and state
-func (b *Bird) Update() {
+func (b *Bird) Update(dt float64) {
 	// Update velocity and position
-	b.vy += config.BirdGravity
-	b.y += b.vy
+	b.vel.Y += config.BirdGravity * dt * 60
+	b.pos = b.pos.Add(b.vel.Scaled(dt * 60))
 
 	// Update bird state based on velocity
-	newState := b.state
-	if b.vy < 0 {
-		newState = BirdStateFlying
-	} else if b.vy > 2 {
-		newState = BirdStateFalling
+	if b.vel.Y < 0 {
+		b.state = BirdStateFlying
+	} else if b.vel.Y > 2 {
+		b.state = BirdStateFalling
 	} else {
-		newState = BirdStateIdle
+		b.state = BirdStateIdle
 	}
 
-	// Change animation if state changed
-	if newState != b.state {
-		b.state = newState
-		b.currentAnim = b.animations[b.state]
-		if b.state == BirdStateFalling {
-			b.currentAnim.Reset()
-		}
+	// Keep bird within screen bounds
+	if b.pos.Y < 0 {
+		b.pos.Y = 0
+		b.vel.Y = 0
+	} else if b.pos.Y > float64(config.ScreenHeight) {
+		b.pos.Y = float64(config.ScreenHeight)
+		b.vel.Y = 0
 	}
-
-	// Update current animation
-	b.currentAnim.Update(1.0 / 60.0) // Assuming 60 FPS
 }
 
 // Draw draws the bird
-func (b *Bird) Draw(screen *ebiten.Image) {
-	b.currentAnim.Draw(screen, b.x, b.y, 1.0)
+func (b *Bird) Draw(win *pixelgl.Window) {
+	b.imd.Clear()
+	
+	// Draw bird body (yellow circle)
+	b.imd.Color = pixel.RGB(1, 1, 0)
+	b.imd.Push(b.pos)
+	b.imd.Circle(float64(config.BirdSize)/2, 0)
+
+	// Draw eye (black dot)
+	b.imd.Color = pixel.RGB(0, 0, 0)
+	eyePos := b.pos.Add(pixel.V(float64(config.BirdSize)/4, float64(config.BirdSize)/4))
+	b.imd.Push(eyePos)
+	b.imd.Circle(2, 0)
+
+	b.imd.Draw(win)
 }
 
 // Jump makes the bird jump
 func (b *Bird) Jump() {
-	b.vy = config.BirdJumpVel
+	b.vel.Y = config.BirdJumpVel
 	b.state = BirdStateFlying
-	b.currentAnim = b.animations[b.state]
-	b.currentAnim.Reset()
 }
 
 // GetBounds returns the bird's bounding box for collision detection
 func (b *Bird) GetBounds() []float64 {
+	size := float64(config.BirdSize)
 	return []float64{
-		b.x,
-		b.y,
-		float64(config.BirdSize),
-		float64(config.BirdSize),
+		b.pos.X - size/2,
+		b.pos.Y - size/2,
+		size,
+		size,
 	}
 }

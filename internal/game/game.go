@@ -3,148 +3,139 @@ package game
 import (
 	"fmt"
 	"image/color"
-	"math/rand"
 
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/pixelgl"
+	"github.com/faiface/pixel/text"
+	"golang.org/x/image/font/basicfont"
 
 	"github.com/ydnAkif/flappy-bird-go/internal/config"
 )
 
+// Game states
+const (
+	StateTitle = iota
+	StatePlaying
+	StateGameOver
+)
+
 // Game represents the game state
 type Game struct {
-	bird      *Bird
-	pipes     []Pipe
-	score     int
-	gameOver  bool
-	spaceJust bool
+	state  int
+	bird   *Bird
+	pipes  []*Pipe
+	score  int
+	paused bool
+	atlas  *text.Atlas
 }
 
-// NewGame creates a new instance of the game
+// NewGame creates a new game instance
 func NewGame() (*Game, error) {
-	bird, err := NewBird()
-	if err != nil {
-		return nil, err
+	// Initialize game
+	g := &Game{
+		state: StateTitle,
+		pipes: make([]*Pipe, 0),
+		score: 0,
+		atlas: text.NewAtlas(basicfont.Face7x13, text.ASCII),
 	}
 
-	g := &Game{
-		bird:  bird,
-		pipes: make([]Pipe, 0),
+	// Initialize bird
+	bird, err := NewBird()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create bird: %v", err)
 	}
-	g.addPipe()
+	g.bird = bird
+
 	return g, nil
 }
 
-func (g *Game) addPipe() {
-	gapY := rand.Float64()*(config.ScreenHeight-200) + 100
-	pipe := Pipe{
-		x:       config.ScreenWidth,
-		topH:    gapY - config.PipeGap/2,
-		bottomH: config.ScreenHeight - (gapY + config.PipeGap/2),
-		passed:  false,
-	}
-	g.pipes = append(g.pipes, pipe)
-}
-
-// Update handles game logic updates
-func (g *Game) Update() error {
-	if g.gameOver {
-		if ebiten.IsKeyPressed(ebiten.KeySpace) {
-			newGame, err := NewGame()
-			if err != nil {
-				return err
-			}
-			*g = *newGame
-		}
-		return nil
+// Update updates the game state
+func (g *Game) Update(win *pixelgl.Window, dt float64) {
+	if g.paused {
+		return
 	}
 
-	if ebiten.IsKeyPressed(ebiten.KeySpace) {
-		if !g.spaceJust {
+	switch g.state {
+	case StateTitle:
+		if win.JustPressed(pixelgl.KeySpace) {
+			g.state = StatePlaying
 			g.bird.Jump()
-			g.spaceJust = true
 		}
-	} else {
-		g.spaceJust = false
-	}
+	case StatePlaying:
+		g.bird.Update(dt)
 
-	g.bird.Update()
-
-	// Update pipes and check collisions
-	for i := range g.pipes {
-		g.pipes[i].x -= 2
-
-		if g.checkCollisionWithPipe(i) {
-			g.gameOver = true
-			PlayHitSound()
+		// Update pipes
+		for i := len(g.pipes) - 1; i >= 0; i-- {
+			g.pipes[i].Update(dt)
+			if g.pipes[i].IsOffscreen() {
+				g.pipes = append(g.pipes[:i], g.pipes[i+1:]...)
+			}
 		}
 
-		if !g.pipes[i].passed && g.pipes[i].x+config.PipeWidth < g.bird.x {
-			g.score++
-			g.pipes[i].passed = true
-			PlayScoreSound()
+		// Add new pipe
+		if len(g.pipes) == 0 || g.pipes[len(g.pipes)-1].X < float64(config.ScreenWidth-config.PipeInterval) {
+			g.pipes = append(g.pipes, NewPipe())
+		}
+
+		// Handle input
+		if win.JustPressed(pixelgl.KeySpace) {
+			g.bird.Jump()
+		}
+
+		// Check collisions
+		for _, pipe := range g.pipes {
+			if pipe.Collides(g.bird.GetBounds()) {
+				g.state = StateGameOver
+				break
+			}
+			if pipe.PassedBy(g.bird.GetBounds()) {
+				g.score++
+			}
+		}
+
+	case StateGameOver:
+		if win.JustPressed(pixelgl.KeyR) {
+			g.Reset()
 		}
 	}
-
-	// Remove off-screen pipes
-	if len(g.pipes) > 0 && g.pipes[0].x < -config.PipeWidth {
-		g.pipes = g.pipes[1:]
-	}
-
-	// Add new pipes
-	if len(g.pipes) == 0 || g.pipes[len(g.pipes)-1].x < config.ScreenWidth-200 {
-		g.addPipe()
-	}
-
-	// Check ceiling and floor collisions
-	if g.bird.y < 0 || g.bird.y > config.ScreenHeight-config.BirdSize {
-		g.gameOver = true
-		PlayHitSound()
-	}
-
-	return nil
 }
 
-// Draw renders the game
-func (g *Game) Draw(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{0x80, 0xa0, 0xc0, 0xff})
-	
-	g.bird.Draw(screen)
-	
+// Draw draws the game screen
+func (g *Game) Draw(win *pixelgl.Window) {
+	// Clear screen
+	win.Clear(color.RGBA{135, 206, 235, 255}) // Sky blue background
+
+	// Draw game elements
+	g.bird.Draw(win)
 	for _, pipe := range g.pipes {
-		pipe.Draw(screen)
+		pipe.Draw(win)
 	}
 
-	scoreStr := fmt.Sprintf("Score: %d", g.score)
-	ebitenutil.DebugPrint(screen, scoreStr)
+	// Draw score
+	txt := text.New(pixel.V(10, float64(config.ScreenHeight-30)), g.atlas)
+	txt.Color = color.Black
+	fmt.Fprintf(txt, "Score: %d", g.score)
+	txt.Draw(win, pixel.IM)
 
-	if g.gameOver {
-		ebitenutil.DebugPrint(screen, "\n\nGame Over!\nPress SPACE to restart")
+	// Draw game state text
+	switch g.state {
+	case StateTitle:
+		txt := text.New(pixel.V(float64(config.ScreenWidth)/2-50, float64(config.ScreenHeight)/2), g.atlas)
+		txt.Color = color.Black
+		fmt.Fprintf(txt, "Press SPACE to start")
+		txt.Draw(win, pixel.IM)
+	case StateGameOver:
+		txt := text.New(pixel.V(float64(config.ScreenWidth)/2-70, float64(config.ScreenHeight)/2), g.atlas)
+		txt.Color = color.Black
+		fmt.Fprintf(txt, "Game Over! Press R to restart")
+		txt.Draw(win, pixel.IM)
 	}
 }
 
-// Layout implements ebiten.Game's Layout
-func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
-	return config.ScreenWidth, config.ScreenHeight
-}
-
-func (g *Game) checkCollisionWithPipe(i int) bool {
-	birdBounds := g.bird.GetBounds()
-	pipeBounds := []float64{
-		g.pipes[i].x, 0,
-		config.PipeWidth, g.pipes[i].topH,
-	}
-	bottomPipeBounds := []float64{
-		g.pipes[i].x, config.ScreenHeight - g.pipes[i].bottomH,
-		config.PipeWidth, g.pipes[i].bottomH,
-	}
-
-	return checkCollision(birdBounds, pipeBounds) || checkCollision(birdBounds, bottomPipeBounds)
-}
-
-func checkCollision(rect1, rect2 []float64) bool {
-	return rect1[0] < rect2[0]+rect2[2] &&
-		rect1[0]+rect1[2] > rect2[0] &&
-		rect1[1] < rect2[1]+rect2[3] &&
-		rect1[1]+rect1[3] > rect2[1]
+// Reset resets the game state
+func (g *Game) Reset() {
+	g.state = StateTitle
+	g.score = 0
+	g.pipes = make([]*Pipe, 0)
+	g.bird, _ = NewBird()
 }
