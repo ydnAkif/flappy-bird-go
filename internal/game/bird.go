@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"image/color"
@@ -6,48 +6,99 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	
+	"flappy-bird-go/internal/config"
+	"flappy-bird-go/internal/game/sprite"
+)
+
+// Bird states
+const (
+	BirdStateIdle = iota
+	BirdStateFlying
+	BirdStateFalling
 )
 
 // Bird represents the player character
 type Bird struct {
-	x, y        float64
-	vy          float64
-	gravity     float64
-	frameCount  int
-	frameIndex  int
-	rotation    float64
+	x, y    float64
+	vy      float64
+	state   int
+	animations map[int]*sprite.Animation
+	currentAnim *sprite.Animation
 }
 
-// Update handles bird physics and animation
-func (b *Bird) Update() {
-	b.vy += b.gravity
-	b.y += b.vy
-	
-	// Update animation frame every 5 game ticks
-	b.frameCount++
-	if b.frameCount >= 5 {
-		b.frameCount = 0
-		b.frameIndex = (b.frameIndex + 1) % len(BirdSprites)
+// NewBird creates a new bird instance
+func NewBird() (*Bird, error) {
+	// Load bird sprite sheet
+	birdImg, _, err := ebitenutil.NewImageFromFile("internal/assets/sprites/bird.png")
+	if err != nil {
+		return nil, err
 	}
 
-	// Calculate rotation based on velocity
-	b.rotation = math.Atan2(b.vy*0.1, 1.0)
+	bird := &Bird{
+		x:       50,
+		y:       config.ScreenHeight / 2,
+		state:   BirdStateIdle,
+		animations: make(map[int]*sprite.Animation),
+	}
+
+	// Create animations for different states
+	bird.animations[BirdStateIdle] = sprite.NewAnimation(birdImg, 32, 32, 0.1, true)    // Idle animation
+	bird.animations[BirdStateFlying] = sprite.NewAnimation(birdImg, 32, 32, 0.08, true) // Flying animation
+	bird.animations[BirdStateFalling] = sprite.NewAnimation(birdImg, 32, 32, 0.1, false) // Falling animation
+	
+	bird.currentAnim = bird.animations[BirdStateIdle]
+	return bird, nil
 }
 
-// Draw renders the bird
-func (b *Bird) Draw(screen *ebiten.Image) {
-	op := &ebiten.DrawImageOptions{}
-	
-	// Set the rotation origin to the center of the bird
-	op.GeoM.Translate(-float64(birdSize)/2, -float64(birdSize)/2)
-	op.GeoM.Rotate(b.rotation)
-	op.GeoM.Translate(b.x+float64(birdSize)/2, b.y+float64(birdSize)/2)
+// Update updates the bird's position and state
+func (b *Bird) Update() {
+	// Update velocity and position
+	b.vy += config.BirdGravity
+	b.y += b.vy
 
-	// Draw the current animation frame
-	if len(BirdSprites) > 0 {
-		screen.DrawImage(BirdSprites[b.frameIndex], op)
+	// Update bird state based on velocity
+	newState := b.state
+	if b.vy < 0 {
+		newState = BirdStateFlying
+	} else if b.vy > 2 {
+		newState = BirdStateFalling
 	} else {
-		// Fallback to rectangle if sprites aren't loaded
-		ebitenutil.DrawRect(screen, b.x, b.y, birdSize, birdSize, color.RGBA{0xff, 0xff, 0x00, 0xff})
+		newState = BirdStateIdle
+	}
+
+	// Change animation if state changed
+	if newState != b.state {
+		b.state = newState
+		b.currentAnim = b.animations[b.state]
+		if b.state == BirdStateFalling {
+			b.currentAnim.Reset()
+		}
+	}
+
+	// Update current animation
+	b.currentAnim.Update(1.0 / 60.0) // Assuming 60 FPS
+}
+
+// Draw draws the bird
+func (b *Bird) Draw(screen *ebiten.Image) {
+	b.currentAnim.Draw(screen, b.x, b.y, 1.0)
+}
+
+// Jump makes the bird jump
+func (b *Bird) Jump() {
+	b.vy = config.BirdJumpVel
+	b.state = BirdStateFlying
+	b.currentAnim = b.animations[b.state]
+	b.currentAnim.Reset()
+}
+
+// GetBounds returns the bird's bounding box for collision detection
+func (b *Bird) GetBounds() []float64 {
+	return []float64{
+		b.x,
+		b.y,
+		float64(config.BirdSize),
+		float64(config.BirdSize),
 	}
 }
