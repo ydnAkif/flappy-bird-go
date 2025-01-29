@@ -33,37 +33,39 @@ var hitSound []byte
 func InitAudio() {
 	audioContext = audio.NewContext(sampleRate)
 
+	var err error
+
 	// Initialize jump sound
-	jumpSound, err := wav.Decode(audioContext, bytes.NewReader(jumpSound))
+	jumpData, err := wav.Decode(audioContext, bytes.NewReader(jumpSound))
 	if err != nil {
 		log.Printf("Warning: could not load jump sound: %v", err)
 		return
 	}
-	jumpPlayer, err = audio.NewPlayer(audioContext, jumpSound)
+	jumpPlayer, err = audio.NewPlayer(audioContext, jumpData)
 	if err != nil {
 		log.Printf("Warning: could not create jump player: %v", err)
 		return
 	}
 
 	// Initialize score sound
-	scoreSound, err := wav.Decode(audioContext, bytes.NewReader(scoreSound))
+	scoreData, err := wav.Decode(audioContext, bytes.NewReader(scoreSound))
 	if err != nil {
 		log.Printf("Warning: could not load score sound: %v", err)
 		return
 	}
-	scorePlayer, err = audio.NewPlayer(audioContext, scoreSound)
+	scorePlayer, err = audio.NewPlayer(audioContext, scoreData)
 	if err != nil {
 		log.Printf("Warning: could not create score player: %v", err)
 		return
 	}
 
 	// Initialize hit sound
-	hitSound, err := wav.Decode(audioContext, bytes.NewReader(hitSound))
+	hitData, err := wav.Decode(audioContext, bytes.NewReader(hitSound))
 	if err != nil {
 		log.Printf("Warning: could not load hit sound: %v", err)
 		return
 	}
-	hitPlayer, err = audio.NewPlayer(audioContext, hitSound)
+	hitPlayer, err = audio.NewPlayer(audioContext, hitData)
 	if err != nil {
 		log.Printf("Warning: could not create hit player: %v", err)
 		return

@@ -1,4 +1,4 @@
-package main
+package soundgen
 
 import (
 	"encoding/binary"
@@ -11,7 +11,8 @@ const (
 	duration   = 0.1 // seconds
 )
 
-func main() {
+// GenerateSounds generates all game sound effects
+func GenerateSounds() {
 	// Generate jump sound (higher pitch)
 	generateSound("../assets/audio/jump.wav", 880.0, 0.1)
 

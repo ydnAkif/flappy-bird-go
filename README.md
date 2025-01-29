@@ -1,6 +1,78 @@
 # Flappy Bird Go
 
-Bu proje, klasik Flappy Bird oyununun Go programlama dili kullanılarak yapılmış bir versiyonudur. Oyun, [Ebiten](https://ebiten.org/) 2D oyun motoru kullanılarak geliştirilmiştir.
+A Flappy Bird clone written in Go using Ebitengine.
+
+## Project Structure
+
+```
+flappy-bird-go/
+├── cmd/
+│   └── flappybird/         # Main application entry point
+├── internal/
+│   ├── game/               # Game logic
+│   ├── assets/
+│   │   ├── sprites/        # Game sprites and images
+│   │   └── audio/          # Sound effects and music
+│   └── config/             # Game configuration
+├── assets/                 # Raw assets
+└── tools/                  # Development tools
+```
+
+## Development Roadmap
+
+### Current Sprint: Visual Improvements
+- [ ] Implement sprite animations for bird
+- [ ] Add background graphics with parallax effect
+- [ ] Enhance pipe graphics
+- [ ] Add day/night cycle
+
+### Upcoming Features
+
+1. Sound System
+   - [ ] Jump sound effect
+   - [ ] Score sound effect
+   - [ ] Collision sound effect
+   - [ ] Background music
+
+2. Gameplay Enhancements
+   - [ ] Difficulty levels (Easy, Medium, Hard)
+   - [ ] Power-ups (slow time, extra life)
+   - [ ] High score system
+   - [ ] Multiple bird characters
+
+3. Technical Improvements
+   - [ ] Unit tests
+   - [ ] Performance optimizations
+   - [ ] Mobile platform support
+   - [ ] Settings menu (sound, graphics)
+
+4. Multi-Platform Support
+   - [ ] Windows build
+   - [ ] macOS build
+   - [ ] Linux build
+   - [ ] Web browser version
+
+## Getting Started
+
+### Prerequisites
+- Go 1.20 or higher
+- Ebitengine dependencies
+
+### Installation
+```bash
+git clone https://github.com/yourusername/flappy-bird-go
+cd flappy-bird-go
+go mod download
+```
+
+### Running the Game
+```bash
+go run main.go
+```
+
+## Controls
+- Press SPACE to make the bird jump
+- Press SPACE to restart when game over
 
 ## Özellikler
 
@@ -9,44 +81,6 @@ Bu proje, klasik Flappy Bird oyununun Go programlama dili kullanılarak yapılm�
 - Rastgele oluşturulan engeller
 - Gerçekçi fizik sistemi
 - Oyun sonu ve yeniden başlatma mekanizması
-
-## Gereksinimler
-
-- Go 1.20 veya üzeri
-- Ebiten v2 oyun motoru
-
-## Kurulum
-
-1. Go'yu yükleyin (macOS için):
-```bash
-brew install go
-```
-
-2. Projeyi klonlayın:
-```bash
-git clone [repo-url]
-cd flappy-bird-go
-```
-
-3. Bağımlılıkları yükleyin:
-```bash
-go mod tidy
-```
-
-## Oyunu Çalıştırma
-
-Oyunu başlatmak için terminal üzerinden şu komutu çalıştırın:
-```bash
-go run main.go
-```
-
-## Nasıl Oynanır?
-
-- SPACE tuşuna basarak kuşu zıplatın
-- Yeşil borular arasından geçmeye çalışın
-- Her başarılı geçişte 1 puan kazanırsınız
-- Borulara veya ekranın üstüne/altına çarparsanız oyun biter
-- Oyun bittiğinde SPACE tuşuna basarak yeniden başlatabilirsiniz
 
 ## Teknik Detaylar
 
@@ -73,55 +107,6 @@ go run main.go
   - `Game` struct'ı: Oyun durumunu yöneten ana yapı
   - `Bird` struct'ı: Kuş karakterinin özelliklerini ve davranışlarını içerir
   - `Pipe` struct'ı: Boru engellerinin özelliklerini ve davranışlarını içerir
-
-## Gelecek Geliştirmeler
-
-- [ ] Sprite'lar ve görseller ekleme
-- [ ] Ses efektleri ekleme
-- [ ] En yüksek skor sistemi
-- [ ] Animasyonlar ekleme
-- [ ] Zorluk seviyeleri
-- [ ] Farklı karakter seçenekleri
-
-## Gelecek Geliştirmeler
-
-1. Görsel İyileştirmeler
-   - Kuş için sprite animasyonları
-   - Arka plan görselleri ve paralaks efekti
-   - Borular için daha detaylı grafikler
-   - Gündüz/gece döngüsü
-
-2. Ses Efektleri
-   - Zıplama sesi
-   - Puan kazanma sesi
-   - Çarpışma sesi
-   - Arka plan müziği
-
-3. Oynanış İyileştirmeleri
-   - Zorluk seviyeleri (Kolay, Orta, Zor)
-   - Güç artırıcılar (yavaş zaman, ekstra can)
-   - En yüksek skor tablosu
-   - Farklı kuş karakterleri
-
-4. Teknik İyileştirmeler
-   - Birim testleri
-   - Performans optimizasyonları
-   - Mobil platform desteği
-   - Ayarlar menüsü (ses, grafik ayarları)
-
-5. Çoklu Platform Desteği
-   - Windows build
-   - macOS build
-   - Linux build
-   - Web tarayıcı versiyonu
-
-## Katkıda Bulunma
-
-1. Bu repository'yi fork edin
-2. Feature branch'i oluşturun (`git checkout -b feature/amazing-feature`)
-3. Değişikliklerinizi commit edin (`git commit -m 'feat: Add some amazing feature'`)
-4. Branch'inizi push edin (`git push origin feature/amazing-feature`)
-5. Pull Request oluşturun
 
 ## Lisans
 

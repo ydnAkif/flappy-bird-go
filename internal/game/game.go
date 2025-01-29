@@ -6,8 +6,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/audio"
-	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
 )
 
 // Game represents the game state
@@ -17,9 +15,6 @@ type Game struct {
 	score     int
 	gameOver  bool
 	spaceJust bool
-	jumpSound *audio.Player
-	hitSound  *audio.Player
-	scoreSound *audio.Player
 }
 
 // NewGame creates a new instance of the game
@@ -33,9 +28,6 @@ func NewGame() *Game {
 		pipes: make([]Pipe, 0),
 	}
 	g.addPipe()
-	g.jumpSound = PlayJumpSound()
-	g.hitSound = PlayHitSound()
-	g.scoreSound = PlayScoreSound()
 	return g
 }
 
@@ -63,8 +55,7 @@ func (g *Game) Update() error {
 		if !g.spaceJust {
 			g.bird.vy = -8
 			g.spaceJust = true
-			g.jumpSound.Seek(0)
-			g.jumpSound.Play()
+			PlayJumpSound()
 		}
 	} else {
 		g.spaceJust = false
@@ -78,15 +69,13 @@ func (g *Game) Update() error {
 
 		if g.checkCollisionWithPipe(i) {
 			g.gameOver = true
-			g.hitSound.Seek(0)
-			g.hitSound.Play()
+			PlayHitSound()
 		}
 
 		if !g.pipes[i].passed && g.pipes[i].x+pipeWidth < g.bird.x {
 			g.score++
 			g.pipes[i].passed = true
-			g.scoreSound.Seek(0)
-			g.scoreSound.Play()
+			PlayScoreSound()
 		}
 	}
 
@@ -103,8 +92,7 @@ func (g *Game) Update() error {
 	// Check ceiling and floor collisions
 	if g.bird.y < 0 || g.bird.y > screenHeight-birdSize {
 		g.gameOver = true
-		g.hitSound.Seek(0)
-		g.hitSound.Play()
+		PlayHitSound()
 	}
 
 	return nil
@@ -145,28 +133,4 @@ func checkCollision(rect1, rect2 []float64) bool {
 		rect1[0]+rect1[2] > rect2[0] &&
 		rect1[1] < rect2[1]+rect2[3] &&
 		rect1[1]+rect1[3] > rect2[1]
-}
-
-func PlayJumpSound() *audio.Player {
-	stream, err := mp3.Decode("jump.mp3")
-	if err != nil {
-		panic(err)
-	}
-	return audio.NewPlayer(stream)
-}
-
-func PlayHitSound() *audio.Player {
-	stream, err := mp3.Decode("hit.mp3")
-	if err != nil {
-		panic(err)
-	}
-	return audio.NewPlayer(stream)
-}
-
-func PlayScoreSound() *audio.Player {
-	stream, err := mp3.Decode("score.mp3")
-	if err != nil {
-		panic(err)
-	}
-	return audio.NewPlayer(stream)
 }
