@@ -1,88 +1,59 @@
 # Flappy Bird Go
 
-Bu proje, klasik Flappy Bird oyununun Go programlama dili kullanılarak yapılmış bir versiyonudur. Oyun, [Ebiten](https://ebiten.org/) 2D oyun motoru kullanılarak geliştirilmiştir.
+A Flappy Bird clone implemented in Go using the Ebitengine game library.
 
-## Özellikler
+## Features
 
-- Basit ve eğlenceli oynanış
-- Puan sistemi
-- Rastgele oluşturulan engeller
-- Gerçekçi fizik sistemi
-- Oyun sonu ve yeniden başlatma mekanizması
+- Classic Flappy Bird gameplay
+- Simple and responsive controls
+- Score tracking
+- Obstacle generation
+- Physics-based movement
 
-## Gereksinimler
+## Requirements
 
-- Go 1.20 veya üzeri
-- Ebiten v2 oyun motoru
+- Go 1.16 or higher
+- Ebitengine v2.x
 
-## Kurulum
+## Installation
 
-1. Go'yu yükleyin (macOS için):
+1. Clone the repository:
 ```bash
-brew install go
-```
-
-2. Projeyi klonlayın:
-```bash
-git clone [repo-url]
+git clone https://github.com/ydnAkif/flappy-bird-go.git
 cd flappy-bird-go
 ```
 
-3. Bağımlılıkları yükleyin:
+2. Install dependencies:
 ```bash
 go mod tidy
 ```
 
-## Oyunu Çalıştırma
+## Running the Game
 
-Oyunu başlatmak için terminal üzerinden şu komutu çalıştırın:
 ```bash
 go run main.go
 ```
 
-## Nasıl Oynanır?
+## Controls
 
-- SPACE tuşuna basarak kuşu zıplatın
-- Yeşil borular arasından geçmeye çalışın
-- Her başarılı geçişte 1 puan kazanırsınız
-- Borulara veya ekranın üstüne/altına çarparsanız oyun biter
-- Oyun bittiğinde SPACE tuşuna basarak yeniden başlatabilirsiniz
+- Press SPACE or LEFT MOUSE BUTTON to make the bird flap
+- Press ESC to quit the game
 
-## Teknik Detaylar
+## Development
 
-### Oyun Mekanikleri
+This project uses:
+- Go for core game logic
+- Ebitengine for 2D game rendering
+- Standard Go modules for project management
 
-1. **Kuş Kontrolü**
-   - Yerçekimi etkisi
-   - SPACE tuşu ile zıplama
-   - Çarpışma kontrolü
+## Contributing
 
-2. **Boru Sistemi**
-   - Rastgele yüksekliklerde oluşturma
-   - Otomatik hareket
-   - Ekrandan çıkan boruları temizleme
-   - Yeni boruları uygun aralıklarla ekleme
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-3. **Puan Sistemi**
-   - Her boru geçişinde puan artırma
-   - Anlık puan gösterimi
+## License
 
-### Proje Yapısı
-
-- `main.go`: Tüm oyun kodunu içeren ana dosya
-  - `Game` struct'ı: Oyun durumunu yöneten ana yapı
-  - `Bird` struct'ı: Kuş karakterinin özelliklerini ve davranışlarını içerir
-  - `Pipe` struct'ı: Boru engellerinin özelliklerini ve davranışlarını içerir
-
-## Gelecek Geliştirmeler
-
-- [ ] Sprite'lar ve görseller ekleme
-- [ ] Ses efektleri ekleme
-- [ ] En yüksek skor sistemi
-- [ ] Animasyonlar ekleme
-- [ ] Zorluk seviyeleri
-- [ ] Farklı karakter seçenekleri
-
-## Lisans
-
-Bu proje MIT lisansı altında lisanslanmıştır.
+This project is licensed under the MIT License - see the LICENSE file for details.

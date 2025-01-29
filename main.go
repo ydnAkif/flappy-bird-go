@@ -1,13 +1,23 @@
 package main
 
 import (
+	"bytes"
+	"embed"
+	"fmt"
+	"image"
 	"image/color"
+	_ "image/png"
 	"log"
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/audio"
+	"github.com/hajimehoshi/ebiten/v2/audio/wav"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
+
+//go:embed assets/*
+var assets embed.FS
 
 const (
 	screenWidth  = 320
@@ -15,14 +25,32 @@ const (
 	birdSize     = 30
 	pipeWidth    = 60
 	pipeGap      = 100
+	gameTitle    = "Flappy Bird"
+	sampleRate   = 44100
+	audioSampleRate = 44100
 )
 
+// Global audio context
+var globalAudioContext *audio.Context
+
 type Game struct {
-	bird      Bird
-	pipes     []Pipe
-	score     int
-	gameOver  bool
-	spaceJust bool
+	bird       Bird
+	pipes      []Pipe
+	score      int
+	gameOver   bool
+	spaceJust  bool
+	difficulty float64
+
+	// Görsel varlıklar
+	birdImg    *ebiten.Image
+	pipeImg    *ebiten.Image
+	bgImg      *ebiten.Image
+	
+	// Ses varlıkları
+	audioContext *audio.Context
+	jumpSound    *audio.Player
+	hitSound     *audio.Player
+	scoreSound   *audio.Player
 }
 
 type Bird struct {
@@ -38,15 +66,71 @@ type Pipe struct {
 	passed   bool
 }
 
+func loadImage(name string) *ebiten.Image {
+	imgFile, err := assets.ReadFile("assets/" + name)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	img, _, err := image.Decode(bytes.NewReader(imgFile))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return ebiten.NewImageFromImage(img)
+}
+
+func loadSound(audioContext *audio.Context, name string) *audio.Player {
+	soundFile, err := assets.ReadFile("assets/" + name)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	decoded, err := wav.Decode(audioContext, bytes.NewReader(soundFile))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	player, err := audioContext.NewPlayer(decoded)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return player
+}
+
 func NewGame() *Game {
+	// Audio context'i bir kere oluştur
+	if globalAudioContext == nil {
+		globalAudioContext = audio.NewContext(audioSampleRate)
+	}
+
 	g := &Game{
 		bird: Bird{
 			x:       50,
 			y:       screenHeight / 2,
 			gravity: 0.5,
 		},
-		pipes: make([]Pipe, 0),
+		pipes:        make([]Pipe, 0),
+		difficulty:   1.0,
+		audioContext: globalAudioContext,
 	}
+
+	// Geçici olarak basit görüntüler oluştur
+	g.birdImg = ebiten.NewImage(birdSize, birdSize)
+	g.birdImg.Fill(color.RGBA{0xff, 0xff, 0x00, 0xff})
+
+	g.pipeImg = ebiten.NewImage(pipeWidth, screenHeight)
+	g.pipeImg.Fill(color.RGBA{0x00, 0x80, 0x00, 0xff})
+
+	g.bgImg = ebiten.NewImage(screenWidth, screenHeight)
+	g.bgImg.Fill(color.RGBA{0x80, 0xa0, 0xc0, 0xff})
+
+	// Ses özelliklerini geçici olarak devre dışı bırak
+	g.jumpSound = nil
+	g.hitSound = nil
+	g.scoreSound = nil
+
 	g.addPipe()
 	return g
 }
@@ -65,16 +149,27 @@ func (g *Game) addPipe() {
 func (g *Game) Update() error {
 	if g.gameOver {
 		if ebiten.IsKeyPressed(ebiten.KeySpace) {
-			*g = *NewGame()
+			newGame := NewGame()
+			// Ses bağlamını kopyala
+			newGame.audioContext = g.audioContext
+			*g = *newGame
 		}
 		return nil
 	}
 
-	// Kuş kontrolü
+	// Increase difficulty based on score
+	g.difficulty = 1.0 + float64(g.score)/20.0
+
+	// Bird control with updated velocity
 	if ebiten.IsKeyPressed(ebiten.KeySpace) {
 		if !g.spaceJust {
-			g.bird.vy = -8
+			g.bird.vy = -8 * g.difficulty
 			g.spaceJust = true
+			// Ses çalma kısmını kontrol et
+			if g.jumpSound != nil {
+				g.jumpSound.Rewind()
+				g.jumpSound.Play()
+			}
 		}
 	} else {
 		g.spaceJust = false
@@ -83,9 +178,9 @@ func (g *Game) Update() error {
 	g.bird.vy += g.bird.gravity
 	g.bird.y += g.bird.vy
 
-	// Boru hareketi ve çarpışma kontrolü
+	// Updated pipe speed based on difficulty
 	for i := range g.pipes {
-		g.pipes[i].x -= 2
+		g.pipes[i].x -= 2 * g.difficulty
 
 		// Çarpışma kontrolü
 		birdRect := []float64{g.bird.x, g.bird.y, birdSize, birdSize}
@@ -94,12 +189,20 @@ func (g *Game) Update() error {
 
 		if checkCollision(birdRect, topPipeRect) || checkCollision(birdRect, bottomPipeRect) {
 			g.gameOver = true
+			if g.hitSound != nil {
+				g.hitSound.Rewind()
+				g.hitSound.Play()
+			}
 		}
 
 		// Skor kontrolü
 		if !g.pipes[i].passed && g.pipes[i].x+pipeWidth < g.bird.x {
 			g.score++
 			g.pipes[i].passed = true
+			if g.scoreSound != nil {
+				g.scoreSound.Rewind()
+				g.scoreSound.Play()
+			}
 		}
 	}
 
@@ -129,23 +232,36 @@ func checkCollision(rect1, rect2 []float64) bool {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Arkaplan
-	screen.Fill(color.RGBA{0x80, 0xa0, 0xc0, 0xff})
+	// Arkaplanı çiz
+	op := &ebiten.DrawImageOptions{}
+	screen.DrawImage(g.bgImg, op)
 
-	// Kuş
-	ebitenutil.DrawRect(screen, g.bird.x, g.bird.y, birdSize, birdSize, color.RGBA{0xff, 0xff, 0x00, 0xff})
+	// Kuşu çiz
+	op = &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(g.bird.x, g.bird.y)
+	screen.DrawImage(g.birdImg, op)
 
-	// Borular
+	// Boruları çiz
 	for _, pipe := range g.pipes {
-		ebitenutil.DrawRect(screen, pipe.x, 0, pipeWidth, pipe.topH, color.RGBA{0x00, 0x80, 0x00, 0xff})
-		ebitenutil.DrawRect(screen, pipe.x, screenHeight-pipe.bottomH, pipeWidth, pipe.bottomH, color.RGBA{0x00, 0x80, 0x00, 0xff})
+		// Üst boru
+		op = &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(1, -1) // Üst boru için ters çevir
+		op.GeoM.Translate(pipe.x, pipe.topH)
+		screen.DrawImage(g.pipeImg, op)
+
+		// Alt boru
+		op = &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(pipe.x, screenHeight-pipe.bottomH)
+		screen.DrawImage(g.pipeImg, op)
 	}
 
-	// Skor
-	ebitenutil.DebugPrint(screen, "Score: "+string(rune(g.score+'0')))
+	// Improved score display
+	scoreText := fmt.Sprintf("Score: %d", g.score)
+	ebitenutil.DebugPrint(screen, scoreText)
 
 	if g.gameOver {
-		ebitenutil.DebugPrint(screen, "\n\nGame Over!\nPress SPACE to restart")
+		gameOverText := fmt.Sprintf("\n\nGame Over!\nFinal Score: %d\nPress SPACE to restart", g.score)
+		ebitenutil.DebugPrint(screen, gameOverText)
 	}
 }
 
@@ -154,10 +270,11 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func main() {
-	ebiten.SetWindowSize(screenWidth*2, screenHeight*2)
-	ebiten.SetWindowTitle("Flappy Bird")
+	ebiten.SetWindowSize(screenWidth, screenHeight)
+	ebiten.SetWindowTitle(gameTitle)
 
-	if err := ebiten.RunGame(NewGame()); err != nil {
+	game := NewGame()
+	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
 	}
 }
