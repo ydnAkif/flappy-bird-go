@@ -1,24 +1,17 @@
 package main
 
 import (
-	"bytes"
-	"embed"
 	"fmt"
-	"image"
 	"image/color"
-	_ "image/png"
 	"log"
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
-	"github.com/hajimehoshi/ebiten/v2/audio/wav"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-//go:embed assets/*
-var assets embed.FS
-
+// embed.FS ve ilgili importları geçici olarak kaldırıldı
 const (
 	screenWidth  = 320
 	screenHeight = 480
@@ -66,39 +59,6 @@ type Pipe struct {
 	passed   bool
 }
 
-func loadImage(name string) *ebiten.Image {
-	imgFile, err := assets.ReadFile("assets/" + name)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	img, _, err := image.Decode(bytes.NewReader(imgFile))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return ebiten.NewImageFromImage(img)
-}
-
-func loadSound(audioContext *audio.Context, name string) *audio.Player {
-	soundFile, err := assets.ReadFile("assets/" + name)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	decoded, err := wav.Decode(audioContext, bytes.NewReader(soundFile))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	player, err := audioContext.NewPlayer(decoded)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return player
-}
-
 func NewGame() *Game {
 	// Audio context'i bir kere oluştur
 	if globalAudioContext == nil {
@@ -116,7 +76,7 @@ func NewGame() *Game {
 		audioContext: globalAudioContext,
 	}
 
-	// Geçici olarak basit görüntüler oluştur
+	// Geçici görüntüler oluştur - embed yerine doğrudan görüntü oluştur
 	g.birdImg = ebiten.NewImage(birdSize, birdSize)
 	g.birdImg.Fill(color.RGBA{0xff, 0xff, 0x00, 0xff})
 
