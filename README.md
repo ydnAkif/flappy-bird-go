@@ -83,6 +83,46 @@ go run main.go
 - [ ] Zorluk seviyeleri
 - [ ] Farklı karakter seçenekleri
 
+## Gelecek Geliştirmeler
+
+1. Görsel İyileştirmeler
+   - Kuş için sprite animasyonları
+   - Arka plan görselleri ve paralaks efekti
+   - Borular için daha detaylı grafikler
+   - Gündüz/gece döngüsü
+
+2. Ses Efektleri
+   - Zıplama sesi
+   - Puan kazanma sesi
+   - Çarpışma sesi
+   - Arka plan müziği
+
+3. Oynanış İyileştirmeleri
+   - Zorluk seviyeleri (Kolay, Orta, Zor)
+   - Güç artırıcılar (yavaş zaman, ekstra can)
+   - En yüksek skor tablosu
+   - Farklı kuş karakterleri
+
+4. Teknik İyileştirmeler
+   - Birim testleri
+   - Performans optimizasyonları
+   - Mobil platform desteği
+   - Ayarlar menüsü (ses, grafik ayarları)
+
+5. Çoklu Platform Desteği
+   - Windows build
+   - macOS build
+   - Linux build
+   - Web tarayıcı versiyonu
+
+## Katkıda Bulunma
+
+1. Bu repository'yi fork edin
+2. Feature branch'i oluşturun (`git checkout -b feature/amazing-feature`)
+3. Değişikliklerinizi commit edin (`git commit -m 'feat: Add some amazing feature'`)
+4. Branch'inizi push edin (`git push origin feature/amazing-feature`)
+5. Pull Request oluşturun
+
 ## Lisans
 
 Bu proje MIT lisansı altında lisanslanmıştır.
