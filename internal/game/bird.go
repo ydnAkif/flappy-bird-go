@@ -1,14 +1,11 @@
 package game
 
 import (
-	"image/color"
-	"math"
-
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	
-	"flappy-bird-go/internal/config"
-	"flappy-bird-go/internal/game/sprite"
+	"github.com/ydnAkif/flappy-bird-go/internal/config"
+	"github.com/ydnAkif/flappy-bird-go/internal/game/sprite"
 )
 
 // Bird states
