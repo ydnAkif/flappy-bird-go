@@ -3,7 +3,6 @@ package game
 import (
 	"bytes"
 	_ "embed"
-	"log"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/wav"
@@ -16,51 +15,41 @@ const (
 var (
 	audioContext *audio.Context
 	jumpPlayer   *audio.Player
-	scorePlayer  *audio.Player
 	hitPlayer    *audio.Player
+	scorePlayer  *audio.Player
 )
+
+//go:embed assets/jump.wav
+var jumpSound []byte
+
+//go:embed assets/score.wav
+var scoreSound []byte
+
+//go:embed assets/hit.wav
+var hitSound []byte
 
 func init() {
 	audioContext = audio.NewContext(sampleRate)
 }
 
-//go:embed internal/assets/audio/jump.wav
-var jumpSound []byte
-
-//go:embed internal/assets/audio/score.wav
-var scoreSound []byte
-
-//go:embed internal/assets/audio/hit.wav
-var hitSound []byte
-
 // LoadAudio loads all audio files
 func LoadAudio() error {
+	var err error
+
 	// Load jump sound
-	jumpData, err := loadWavFile(jumpSound)
-	if err != nil {
-		return err
-	}
-	jumpPlayer, err = audio.NewPlayer(audioContext, jumpData)
+	jumpPlayer, err = loadWavPlayer(jumpSound)
 	if err != nil {
 		return err
 	}
 
 	// Load hit sound
-	hitData, err := loadWavFile(hitSound)
-	if err != nil {
-		return err
-	}
-	hitPlayer, err = audio.NewPlayer(audioContext, hitData)
+	hitPlayer, err = loadWavPlayer(hitSound)
 	if err != nil {
 		return err
 	}
 
 	// Load score sound
-	scoreData, err := loadWavFile(scoreSound)
-	if err != nil {
-		return err
-	}
-	scorePlayer, err = audio.NewPlayer(audioContext, scoreData)
+	scorePlayer, err = loadWavPlayer(scoreSound)
 	if err != nil {
 		return err
 	}
@@ -92,11 +81,16 @@ func PlayScoreSound() {
 	}
 }
 
-func loadWavFile(data []byte) (*wav.Stream, error) {
-	wavReader, err := wav.Decode(audioContext, bytes.NewReader(data))
+func loadWavPlayer(data []byte) (*audio.Player, error) {
+	d, err := wav.Decode(audioContext, bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
 
-	return wavReader, nil
+	player, err := audio.NewPlayer(audioContext, d)
+	if err != nil {
+		return nil, err
+	}
+
+	return player, nil
 }

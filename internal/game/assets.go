@@ -3,7 +3,7 @@ package game
 
 import (
 	"bytes"
-	"embed"
+	_ "embed"
 	"image"
 	_ "image/png"
 	"log"
@@ -11,33 +11,21 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-//go:embed assets/images/*.png
-var assets embed.FS
+//go:embed assets/bird.png
+var birdSprite []byte
 
-// BirdSprites holds all the animation frames for the bird
+// BirdSprites contains all bird animation frames
 var BirdSprites []*ebiten.Image
 
 // LoadAssets loads all game assets
-func LoadAssets() {
-	// Load bird sprites
-	birdFrames := []string{
-		"assets/images/bird1.png",
-		"assets/images/bird2.png",
-		"assets/images/bird3.png",
+func LoadAssets() error {
+	// Load bird sprite
+	img, _, err := image.Decode(bytes.NewReader(birdSprite))
+	if err != nil {
+		log.Printf("Error loading bird sprite: %v", err)
+		return err
 	}
+	BirdSprites = []*ebiten.Image{ebiten.NewImageFromImage(img)}
 
-	BirdSprites = make([]*ebiten.Image, len(birdFrames))
-	for i, path := range birdFrames {
-		data, err := assets.ReadFile(path)
-		if err != nil {
-			log.Fatalf("failed to load sprite %s: %v", path, err)
-		}
-
-		img, _, err := image.Decode(bytes.NewReader(data))
-		if err != nil {
-			log.Fatalf("failed to decode sprite %s: %v", path, err)
-		}
-
-		BirdSprites[i] = ebiten.NewImageFromImage(img)
-	}
+	return nil
 }

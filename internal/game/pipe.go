@@ -6,7 +6,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 
-	"flappy-bird-go/internal/config"
+	"github.com/ydnAkif/flappy-bird-go/internal/config"
 )
 
 // Pipe represents an obstacle in the game
